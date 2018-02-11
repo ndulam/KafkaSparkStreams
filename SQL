@@ -1,0 +1,403 @@
+Spark SQL:-
+
+https://github.com/rklick-solutions/spark-tutorial/wiki/Spark-SQL#introduction
+https://github.com/rklick-solutions/spark-tutorial/wiki/Spark-Core
+http://www.waitingforcode.com/apache-spark-sql
+
+database --> ndulam
+http://hadoop-makeitsimple.blogspot.com/2016/05/custom-partitioner-in-spark.html
+https://acadgild.com/blog/partitioning-in-spark/
+http://timepasstechies.com/category/programming/data-analytics/spark/
+https://github.com/apache/spark/blob/master/examples/src/main/scala/org/apache/spark/examples/sql/SQLDataSourceExample.scala
+
+import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner
+val temp = ordersRdd.flatMap(x=>x.split(",")).map(word=>(word,1))
+val temp2 = temp.partitionBy(new RangePartitioner(10,temp))
+
+
+
+val ordersRdd = sc.textFile("/user/ndulam/retail/ordersdir/orders");
+val productsRdd = sc.textFile("/user/ndulam/retail/productsdir/products").filter(x=> x.split(",").length==6)
+val order_itemsRdd = sc.textFile("/user/ndulam/retail/order_itemsdir/order_items")
+val departmentsRdd = sc.textFile("/user/ndulam/retail/departmentsdir/departments")
+val customersRdd = sc.textFile("/user/ndulam/retail/customersdir/customers")
+val categoriesRdd = sc.textFile("/user/ndulam/retail/categoriesdir/categories")
+
+case class category(category_id:Int,category_department_id:Int,category_name:String)
+case class customers(customer_id:Int,customer_fname:String,customer_lname:String,customer_email:String,customer_password:String,customer_street:String,customer_city:String,customer_state:String,customer_zipcode:String)
+case class department(department_id:Int,department_name:String)
+case class order_items(order_item_id:Int,order_item_order_id:Int,order_item_product_id:Int,order_item_quantity:Int,order_item_subtotal:Float,order_item_product_price:Float)
+case class orders(order_id:Int,order_date:String,order_customer_id:Int,order_status:String)
+case class products(product_id:Int,product_category_id:Int,product_name:String,roduct_description:String,product_price:Float,product_image:String)
+
+
+
+val ordersdf = ordersRdd.map(line=>line.split(",")).map(tp=>orders(tp(0).toInt,tp(1),tp(2).toInt,tp(3))).toDF
+val productsdf = productsRdd.map(line=>line.split(",")).map( tp=>products(tp(0).toInt,tp(1).toInt,tp(2),tp(3),tp(4).toFloat,tp(5))).toDF
+val orderitemsdf = order_itemsRdd.map(line=>line.split(",")).map( tp=> order_items(tp(0).toInt,tp(1).toInt,tp(2).toInt,tp(3).toInt,tp(4).toFloat,tp(5).toFloat)).toDF
+val departmentsdf =  departmentsRdd.map(line=>line.split(",")).map(tp=> department(tp(0).toInt,tp(1))).toDF
+val customerdf = customersRdd.map(line=>line.split(",")).map(tp=>customers(tp(0).toInt,tp(1),tp(2),tp(3),tp(4),tp(5),tp(6),tp(7),tp(8)) ).toDF
+val categorydf = categoriesRdd.map(line=>line.split(",")).map(tp=>category(tp(0).toInt,tp(1).toInt,tp(2))).toDF
+
+val ordersds = ordersdf.as[orders]
+val productsds = productsdf.as[products]
+val orderitemsds = orderitemsdf.as[order_items]
+val departmentsds = departmentsdf.as[department]
+val customerds = customerdf.as[customers]
+val categoryds = categorydf.as[category]
+
+
+
+val ordersdf = sqlContext.sql("select * from ndulam.orders")
+val productsdf = sqlContext.sql("select * from ndulam.products")
+val orderitemsdf = sqlContext.sql("select * from ndulam.order_items")
+val departmentsdf =  sqlContext.sql("select * from ndulam.department")
+val customerdf = sqlContext.sql("select * from ndulam.customers")
+val categorydf = sqlContext.sql("select * from ndulam.category")
+
+
+ordersdf.write.format("parquet").save("/user/ndulam/retail/parquet/orders.parquet")
+productsdf.write.format("parquet").save("/user/ndulam/retail/parquet/products.parquet")
+orderitemsdf.write.format("parquet").save("/user/ndulam/retail/parquet/orderitems.parquet")
+departmentsdf.write.format("parquet").save("/user/ndulam/retail/parquet/departments.parquet")
+customerdf.write.format("parquet").save("/user/ndulam/retail/parquet/customer.parquet")
+categorydf.write.format("parquet").save("/user/ndulam/retail/parquet/category.parquet")
+
+
+
+
+
+
+groupBy:
+ordersdf.groupBy("order_status").count.show
+ordersdf.groupBy("order_status").sum("order_id")
+ordersdf.groupBy("order_status").max("order_id").show
+ordersdf.groupBy("order_status").avg("order_id").show
+ordersdf.groupBy("order_status").agg(sum("order_id"),avg("order_id")).show
+ordersdf.groupBy("order_status").agg(sum("order_id"),avg("order_id")).show // using agg we can apply multiple aggregate functions(avg,min,max,sum) on different columns
+
+We can apply above aggregate functions without grouping also as below
+ordersdf.select(avg("order_id")).show
+ordersdf.agg(avg("order_id")).show
+
+pivot:
+--> https://databricks.com/blog/2016/02/09/reshaping-data-with-pivot-in-apache-spark.html
+--> https://svds.com/pivoting-data-in-sparksql/
+
+-->val df = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").option("inferSchema", "true").load("/user/ndulam/cars/mpg.csv")
+
+case class milage(ser:Int,manufacturer:String,model:String,displ:Float,year:Int,cyl:Int,trans:String,drv:String,cty:Int,hwy:Int,fl:String,carclass:String)
+val file = sc.textFile("/user/ndulam/cars/mpg.csv")
+val header = file.first
+val milagerdd = file.filter(line=>line!=header)
+val milagedf = milagerdd.map(_.split(",")).map(arr=>milage(arr(0).toInt,arr(1),arr(2),arr(3).toFloat,arr(4).toInt,arr(5).toInt,arr(6),arr(7),arr(8).toInt,arr(9).toInt,arr(10),arr(11)))
+val milageds = milagedf.toDS
+
+milagedf.first:
+1,audi,a4,1.8,1999,4,auto(l5),f,18,29,p,compact
+
+milagedf.groupBy("carclass").pivot("year").agg(min("cty"),max("cty"),min("cty"),max("cty")).show
++----------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+|  carclass|1999_min(cty)|1999_max(cty)|1999_min(cty)|1999_max(cty)|2008_min(cty)|2008_max(cty)|2008_min(cty)|2008_max(cty)|
++----------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+|       suv|           11|           18|           11|           18|            9|           20|            9|           20|
+|   2seater|           15|           16|           15|           16|           15|           16|           15|           16|
+|    pickup|           11|           16|           11|           16|            9|           17|            9|           17|
+|   midsize|           15|           21|           15|           21|           16|           23|           16|           23|
+|   compact|           15|           33|           15|           33|           15|           28|           15|           28|
+|   minivan|           15|           18|           15|           18|           11|           17|           11|           17|
+|subcompact|           15|           35|           15|           35|           14|           26|           14|           26|
++----------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+-------------+
+s
+
+na - https://stackoverflow.com/questions/4862178/remove-rows-with-nas-missing-values-in-data-frame
+
+
+filter:
+ordersdf.filter("order_status='PENDING'").count
+ordersdf.filter(ordersdf("order_status")='PENDING').count
+ordersdf.filter("order_id>68880").show
+ordersdf.filter(ordersdf("order_id")>68880).show
+ordersdf.filter(ordersdf("order_status")==="PENDING").show
+
+
+sort:
+ordersdf.sort(ordersdf("order_id").desc).show or ordersdf.sort($"order_id".desc).show
+ordersdf.sort(ordersdf("order_id")).show or ordersdf.sort($"order_id").show
+
+orderBy:
+ordersdf.orderBy(ordersdf("order_id").desc).show  or  ordersdf.orderBy(desc("order_id")).show
+ordersdf.orderBy(ordersdf("order_id")).show
+
+
+head/limit :- Returns a new DataFrame by taking the first n rows.The difference between this function and head is that head returns an array while limit returns a new DataFrame.
+ordersdf.head(2) ==> Array[org.apache.spark.sql.Row]
+ordersdf.limi(2)==> org.apache.spark.sql.DataFrame
+
+unionALL/intestion/except
+val pendingdf = ordersdf.filter(ordersdf("order_status")==="PENDING")
+ordersdf.unionAll(pendingdf)
+ordersdf.intersect(penidngdf)
+ordersdf.except(pendingdf)
+
+withColumn:
+Returns a new DataFrame by adding a column or replacing the existing column that has the same name. Please look at below examples carefully. one is adding columns and other is replacing
+
+val Quantitydecider:(Int=>String) = (quantity:Int) => {
+if(quantity<5) "less than 5" else "Eqaul or More"
+}
+
+val quantityfun = udf(Quantitydecider)
+
+orderitemsdf.withColumn("order_item_quantity",quantityfun(col("order_item_quantity"))).printSchema
+root
+ |-- order_item_id: integer (nullable = false)
+ |-- order_item_order_id: integer (nullable = false)
+ |-- order_item_product_id: integer (nullable = false)
+ |-- order_item_quantity: string (nullable = true)
+ |-- order_item_subtotal: float (nullable = false)
+ |-- order_item_product_price: float (nullable = false)
+
+orderitemsdf.withColumn("Decider",quantityfun(col("order_item_quantity"))).printSchema
+root
+ |-- order_item_id: integer (nullable = false)
+ |-- order_item_order_id: integer (nullable = false)
+ |-- order_item_product_id: integer (nullable = false)
+ |-- order_item_quantity: integer (nullable = false)
+ |-- order_item_subtotal: float (nullable = false)
+ |-- order_item_product_price: float (nullable = false)
+ |-- Decider: string (nullable = true)
+
+withColumnRenamed: Returns a new DataFrame with a column renamed.
+orderitemsdf.withColumnRenamed("order_item_quantity","quantity")
+org.apache.spark.sql.DataFrame = [order_item_id: int, order_item_order_id: int, order_item_product_id: int, quantity: int, order_item_subtotal: float, order_item_product_price: float]
+
+drop():
+orderitemsdf.drop("order_item_quantity")
+res52: org.apache.spark.sql.DataFrame = [order_item_id: int, order_item_order_id: int, order_item_product_id: int, order_item_subtotal: float, order_item_product_price: float]
+
+dropDuplicates:
+Returns a new DataFrame that contains only the unique rows from this DataFrame. This is an alias for distinct.
+ordersdf.unionAll(pendingdf).dropDuplicates().count
+
+describe:
+describe returns a DataFrame containing information such as number of non-null entries (count),mean, standard deviation, and minimum and maximum value for each numerical column.
+ordersdf.describe("order_id").show
++-------+------------------+
+|summary|          order_id|
++-------+------------------+
+|  count|             68883|
+|   mean|           34442.0|
+| stddev|19884.953633337947|
+|    min|                 1|
+|    max|             68883|
++-------+------------------+
+
+
+To check logical/physical execution plan as below
+ co.explain()
+ co.queryExecution.executedPlan
+
+Datasets operations:
+select:
+ordersds.select($"order_id".as[String])
+
+Joining:
+ordersds.joinWith(orderitemsds,$"orderitemsds.order_item_order_id".as[Int]===$"ordersds.order_id".as[Int])
+ordersds.joinWith(orderitemsds,$"orderitemsds.order_item_order_id"===$"ordersds.order_id")
+
+val result = ordersds.joinWith(orderitemsds,$"orderitemsds.order_item_order_id".as[Int]===$"ordersds.order_id".as[Int])
+res58: org.apache.spark.sql.Dataset[(orders, order_items)] = [_1: struct<order_id:int,order_date:string,order_customer_id:int,order_status:string>, _2: struct<order_item_id:int,order_item_order_id:int,order_item_product_id:int,order_item_quantity:int,order_item_subtotal:float,order_item_product_price:float>]
+select on joined data:
+result.map(r=>r._1.order_date)
+
+groupBy:
+ordersds.groupBy(_.order_status).agg(sum($"order_id").as[Double],avg($"order_customer_id").as[Double]).collect
+
+
+
+
+
+
+Broadcast Join:-
+By default spark will perform broadcast join if one of the tables being joined are less than 10MB(10485760, property spark.sql.autoBroadcastJoinThreshold )
+
+if you wanted to explicitly specify broadcast join(cases like table size is more than 10 MB), use below syntax to broadcast join
+import org.apache.spark.sql.functions.broadcast
+val bc = broadcast(customerdf)
+val co = ordersdf.join(bc, bc("customer_id")=== ordersdf("order_customer_id"))
+
+If you wanted to disable broadcast join set below property to -1
+sqlContext.sql("SET spark.sql.autoBroadcastJoinThreshold = -1")
+
+CAST(regexp_replace(regexp_replace(TRIM(col2),'\\.',''),',','.') as decimal(12,2))
+
+
+1. find customer wise shoping total?
+val goi = orderitemsdf.groupBy("order_item_order_id").agg(sum("order_item_subtotal") as "sumtotal")
+val co = customerdf.join(ordersdf, customerdf("customer_id")=== ordersdf("order_customer_id")).select("customer_fname","order_id")
+val result = goi.join(co,goi("order_item_order_id")===co("order_id")).select("customer_fname","sumtotal")
+
+
+2. find category wise orders total?
+val oigps = orderitemsdf.select("order_item_product_id","order_item_subtotal").groupBy("order_item_product_id").agg(sum("order_item_subtotal") as "Totalcost")
+val jsp = oigps.join(productsdf,oigps("order_item_product_id")===productsdf("product_id")).select("product_category_id","Totalcost")
+val jcs = jsp.join(categorydf,jsp("product_category_id")===categorydf("category_id")).select("category_name","Totalcost")
+
+3. find city wise sales?
+
+4. find each product product_price?
+
+5. total orderitems order wise?
+
+
+
+
+
+addent -password -p ndulam@HDPRD002.IT.domain.COM  -k 1 -e rc4-hmac
+
+
+Best Practices:
+1. After repartitioning using partitioBy persist to avoid perform perform shuffling each time.
+example:-  rdd.partitioBy(RangePartitioner/HashPartitioner).persist
+2. performing join on pre-partitioned rdd(using partitionBy) avoid the shuffling.
+
+
+
+create external table category(category_id INT,category_department_id INT,category_name STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/categoriesdir';
+create external table customers(customer_id INT,customer_fname STRING,customer_lname STRING,customer_email STRING,customer_password STRING,customer_street STRING,customer_city STRING,customer_state STRING,customer_zipcode STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/customersdir';
+create external table department(department_id INT,department_name STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/departmentsdir';
+create external table order_items(order_item_id INT,order_item_order_id INT,order_item_product_id INT,order_item_quantity INT,order_item_subtotal FLOAT,order_item_product_price FLOAT) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/order_itemsdir';
+create external table orders(order_id INT,order_date STRING,order_customer_id INT,order_status STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/ordersdir';
+create external table products(product_id INT,product_category_id INT,product_name STRING,roduct_description STRING,product_price INT,product_image STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location '/user/ndulam/retail/productsdir';
+
+ANALYZE TABLE category COMPUTE STATISTICS noscan;
+
+
+Joins:-
+
+orders	:	                                               customers:
+id, "customers_id", "amount"		                        id, "login"
+[1,1,50.0]		                                          [1,Customer_1]
+[2,2,10.0]		                                          [2,Customer_2]
+[3,2,10.0]		                                          [3,Customer_3]
+[4,2,10.0]
+[5,1000,19.0]
+
+
+orders.join(customers,orders("customers_id") === customers("id"), "leftsemi").collect
+[1,1,50.0]
+[2,2,10.0]
+[3,2,10.0]
+[4,2,10.0])
+
+orders.join(customers,orders("customers_id") === customers("id"), "leftouter").collect
+[1,1,50.0,1,Customer_1]
+[2,2,10.0,2,Customer_2]
+[3,2,10.0,2,Customer_2]
+[4,2,10.0,2,Customer_2]
+[5,1000,19.0,null,null]
+
+
+creating schema:
+
+ import org.apache.spark.sql.Row;
+ import org.apache.spark.sql.types.{StructType,StructField,StringType};
+
+ StructType(StructField(, Type, false),StructField(LAST_UPDATE_DATE, DateType, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(VENDOR_ID, StringType, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false),StructField(, Type, false)   )
+
+
+val rdd1 = sc.makeRDD(Array(("A","Naresh"),("B","Aparna"),("C","Chitti")))
+
+val rdd2 = sc.makeRDD(Array(("A","Sathaiah"),("C","Jyothi"),("D","Vinay"),("A","Dulam"),("B","Balagoni"),("C","Done")))
+
+Array[(String, (Iterable[String], Iterable[String]))] = Array((A,(CompactBuffer(Naresh),CompactBuffer(Sathaiah, Dulam))),
+(B,(CompactBuffer(Aparna),CompactBuffer(Balagoni))), (C,(CompactBuffer(Chitti, Done),CompactBuffer(Jyothi))),
+ (D,(CompactBuffer(),CompactBuffer(Vinay))))
+
+ Array((A,(CompactBuffer(Naresh),CompactBuffer(Sathaiah, Dulam))), (B,(CompactBuffer(Aparna),CompactBuffer(Balagoni))),
+  (C,(CompactBuffer(Chitti),CompactBuffer(Jyothi, Done))), (D,(CompactBuffer(),CompactBuffer(Vinay))))
+
+val result1 = result.map{ x =>
+     val key = x._1
+     val value = x._2
+     val temp1 = value._1.toList
+     val temp2 = value._2.toList
+     import scala.collection.mutable.ArrayBuffer
+     var names = ArrayBuffer[String]()
+     for (t1 <- temp2 if t1.startsWith("D"))
+     {
+     names+= t1
+     }
+     (key,names)
+     }
+
+
+     file.mapPartitionsWithIndex((x,y)=>{
+           val l = y.toList
+           val len = l.length
+           (x,len).map(z=>z).iterator
+
+           }
+           )
+
+
+ import org.apache.spark.util.SizeEstimator
+ println(SizeEstimator.estimate(file)) -- in bytes
+The repartition algorithm does a full data shuffle and equally distributes the data among the partitions. It does not attempt to minimize data movement like the coalesce algorithm.
+
+ file.mapPartitionsWithIndex{case (i,rows) => Iterator((i,rows.size))}
+
+Example to iterate through Iterator:-
+
+             val result1 = result.map{ x =>
+             val key = x._1
+             val value = x._2
+             val temp1 = value._1.toList
+             val temp2 = value._2.toList
+             import scala.collection.mutable.ArrayBuffer
+             var names = ArrayBuffer[String]()
+             for (t1 <- temp2 if t1.startsWith("D")){
+              names+= t1
+              }
+               (key,names)
+               }
+
+
+
+
+spark-submit --master yarn --driver-memory 20g --executor-memory 20g --num-executors 50 --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:+UseCompressedOops" --conf "spark.local.dir=/opt/data/stage01/app/temp" --conf "spark.worker.cleanup.enabled=true"  --conf "spark.broadcast.blockSize=16m"  --conf "spark.yarn.executor.memoryOverhead=5120" --conf spark.network.timeout=800 --conf spark.rpc.askTimeout=800 --conf spark.locality.wait=10s --conf spark.yarn.max.executor.failures=100 --conf spark.shuffle.manager=SORT --conf spark.shuffle.service.enabled=true --conf spark.shuffle.compress=true --conf spark.shuffle.spill.compress=true --class classname $APP_DIR/bin/ott-report-sumry-spark-1.0.jar
+
+spark-submit --master yarn
+
+
+
+spark-submit --class com.naresh.org.CustomerwiseTotal  --master yarn --deploy-mode cluster  SparkApp-1.0-SNAPSHOT.jar --num-executors 3 --executor-memory 3G --executor-cores 4
+
+spark-submit --class com.naresh.org.CustomerwiseTotal  --master yarn --deploy-mode cluster  SparkApp-1.0-SNAPSHOT.jar
+spark-submit --class com.naresh.org.CategorywiseTotal  --master yarn --deploy-mode cluster  SparkApp-1.0-SNAPSHOT.jar
+spark-submit --class com.naresh.org.StreamApp --deploy-mode cluster SparkStreamingApps-0.0.1-SNAPSHOT.jar
+
+spark-submit --class com.naresh.org.HBaseTest --master yarn --jars  /usr/hdp/current/hbase-client/lib/hbase-client.jar  --deploy-mode cluster SparkApp-1.0-SNAPSHOT.jar
+
+spark-submit --class com.naresh.org.HBaseTest --master yarn --files /etc/hbase/conf/hbase-site.xml,/etc/hadoop/conf/core-site.xml,/etc/hadoop/conf/hdfs-site.xml,/home/ndulam/ndulam.keytab  --jars /usr/hdp/current/hbase-client/lib/hbase-client.jar,/usr/hdp/current/hbase-master/lib/hbase-server.jar,/usr/hdp/current/hbase-master/lib/htrace-core-3.1.0-incubating.jar,/usr/hdp/current/hbase-master/lib/metrics-core-2.2.0.jar  --deploy-mode client SparkApp-1.0-SNAPSHOT.jar  --principal ndulam@HDPRD002.IT.domain.COM --keytab /home/ndulam/ndulam.keytab
+
+
+Streaming:
+
+ java -cp "/Users/ndulam/kafka/libs/*":SparkStreamingApps-0.0.1-SNAPSHOT.jar com.naresh.org.KafkaCarProducer
+
+ bin/kafka-console-consumer.sh  --topic cars --bootstrap-server localhost:9093
+ bin/kafka-topics.sh  --zookeeper localhost:2181 --list
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9093 --topic fastcars
+
+ spark-submit --class com.naresh.org.StreamApp FirstAppS-1.0-SNAPSHOT.jar
+
+ spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.2.0 --jars  ~/.ivy2/jars/kafka-clients-0.10.2.1.jar --class com.naresh.org.AppStream ./target/SampleStreamApp-1.0-SNAPSHOT.jar
+
+/Users/ndulam/Desktop/workspace/SparkTraining/SparkStreamingApps/target
+java -cp "/Users/ndulam/kafka/libs/*":SparkStreamingApps-0.0.1-SNAPSHOT.jar com.naresh.org.KafkaCarProducer jeep
+
+cd /Users/ndulam/Desktop/SparkStreamWorkspace/SampleStreamApp
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.2.0 --jars  ~/.ivy2/jars/kafka-clients-0.10.2.1.jar --class com.naresh.org.AppStream ./target/SampleStreamApp-1.0-SNAPSHOT.jar jeep
