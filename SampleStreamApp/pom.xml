@@ -32,6 +32,18 @@
       <version>2.2.1</version>
       <scope>provided</scope>
     </dependency>
+      <dependency>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>spark-streaming_${scala.tools.version}</artifactId>
+          <version>2.2.1</version>
+          <scope>provided</scope>
+      </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-streaming-kafka-0-10_2.11</artifactId>
+      <version>2.2.1</version>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.11</artifactId>

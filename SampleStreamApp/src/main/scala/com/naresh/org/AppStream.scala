@@ -5,6 +5,7 @@ import java.sql.Timestamp
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
+
 object AppStream {
 
   case class CarEvent(carId:String,speed:Option[Int],acceleration:Option[Double],timestamp:Timestamp)
@@ -29,6 +30,8 @@ object AppStream {
 
     val df: DataFrame = spark.readStream.format("kafka").option("kafka.bootstrap.servers", "localhost:9092").option("subscribe", topic).option("startingOffsets", "latest").option("failOnDataLoss","false").load()
 
+    df.printSchema()
+
     val cars:Dataset[CarEvent] = df.selectExpr("CAST(value AS STRING)").map(r=>CarEvent(r.getString(0)))
 
     val aggregates = cars.withWatermark("timestamp", "3 seconds").groupBy(window($"timestamp","4 seconds"), $"carId").agg(avg("speed").alias("speed"))
@@ -37,7 +40,6 @@ object AppStream {
 
     val writeToKafka = aggregates.selectExpr("CAST(carId AS STRING) AS KEY","CAST(speed AS STRING) AS value").writeStream.format("kafka").option("kafka.bootstrap.servers","localhost:9092")
       .option("topic", "fastcars").option("checkpointLocation", "/tmp/sparkcheckpoint/").queryName("kafka spark streaming kafka").outputMode("update").start()
-
 
     spark.streams.awaitAnyTermination();
 
