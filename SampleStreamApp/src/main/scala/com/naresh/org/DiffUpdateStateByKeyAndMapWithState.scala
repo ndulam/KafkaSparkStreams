@@ -24,7 +24,7 @@ object DiffUpdateStateByKeyAndMapWithState {
       "value.deserializer" -> classOf[StringDeserializer], "group.id" -> "use_a_separate_group_id_for_each_stream",
       "auto.offset.reset" -> "latest",
       "enable.auto.commit" -> (false: java.lang.Boolean))
-    val topic = Set[String]("jeep").toSet
+    val topic = Set[String]("test1","test2","test3").toSet
 
     val messages = KafkaUtils.createDirectStream[String,String](ssc,LocationStrategies.PreferConsistent,
       ConsumerStrategies.Subscribe[String,String](topic,kafkParams))

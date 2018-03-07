@@ -34,7 +34,7 @@ object AppStream {
 
     val cars:Dataset[CarEvent] = df.selectExpr("CAST(value AS STRING)").map(r=>CarEvent(r.getString(0)))
 
-    val aggregates = cars.withWatermark("timestamp", "3 seconds").groupBy(window($"timestamp","4 seconds"), $"carId").agg(avg("speed").alias("speed"))
+    val aggregates = cars.withWatermark("timestamp", "3 seconds").groupBy(window($"eventTime","4 seconds"), $"carId").agg(avg("speed").alias("speed"))
 
     aggregates.printSchema()
 

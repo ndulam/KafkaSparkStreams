@@ -8,10 +8,11 @@ public class Sensor
 	private int temp;
 	private int c02_level;
 	private Geo geo;
+	private long eventTime;
 	@Override
 	public String toString() {
 		return "Sensor [id=" + id + ", ip=" + ip + ", description=" + description + ", temp=" + temp + ", c02_level="
-				+ c02_level + ", geo=" + geo + "]";
+				+ c02_level + ", geo=" + geo + ", eventTime=" + eventTime + "]";
 	}
 	public int getId() {
 		return id;
@@ -49,7 +50,7 @@ public class Sensor
 	public void setGeo(Geo geo) {
 		this.geo = geo;
 	}
-	public Sensor(int id, String ip, String description, int temp, int c02_level, Geo geo) {
+	public Sensor(int id, String ip, String description, int temp, int c02_level, Geo geo,long eventTime) {
 		super();
 		this.id = id;
 		this.ip = ip;
@@ -57,6 +58,14 @@ public class Sensor
 		this.temp = temp;
 		this.c02_level = c02_level;
 		this.geo = geo;
+		this.eventTime = eventTime;
 	}
+	public long getEventTime() {
+		return eventTime;
+	}
+	public void setEventTime(long eventTime) {
+		this.eventTime = eventTime;
+	}
+	
 	
 }

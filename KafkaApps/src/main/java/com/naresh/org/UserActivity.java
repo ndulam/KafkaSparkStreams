@@ -186,7 +186,7 @@ public class UserActivity
 		ArrayList<String> lattitude  = new ArrayList<String>();
 		
 		
-		FileReader fileReader = new FileReader("/Users/nd2629/Downloads/us_postal_codes.csv");
+		FileReader fileReader = new FileReader("resources/us_postal_codes.csv");
 		BufferedReader bufferedReader = new BufferedReader(fileReader);
 		String line = null;
 		while((line = bufferedReader.readLine()) != null)
@@ -223,7 +223,6 @@ public class UserActivity
 		ObjectMapper objectMapper = new ObjectMapper();
 		while(true)
 		{
-
 		JsonNode  jsonNode = objectMapper.valueToTree(new UserActivity(names[rand.nextInt(names.length)], city.get(rand.nextInt(city.size())), state.get(rand.nextInt(state.size())), 
 				county.get(rand.nextInt(county.size())), browser[rand.nextInt(browser.length)],System.currentTimeMillis()+"", 
 				activeList[rand.nextInt(activeList.length)],
