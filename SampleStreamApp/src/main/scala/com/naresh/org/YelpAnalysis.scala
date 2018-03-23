@@ -2,8 +2,9 @@ package com.naresh.org
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-
 import org.apache.spark.sql.types.IntegerType
+
+import scala.collection.mutable
 
 object YelpAnalysis
 {
@@ -103,6 +104,33 @@ object YelpAnalysis
     val temp=checkds.groupBy("business_id","hour").pivot("weekday").agg(collect_list("checkins")).map(row=>(row.getString(0),row.getString(1),row.getList(2).size))
 
 
+    //Each business day wise total checkins
+   val daywisecheckins = checkds.groupBy("business_id").pivot("weekday").agg(sum("checkins"))
+
+    val consolreviews=reviewds.filter(row=>row.stars!=null).withColumn("stars",reviewds("stars").cast("integer")).groupBy("business_id").agg(count("stars").alias("count_reviwes"),sum("stars").alias("total_reviews"))
+    val consolidatedbs=businessds.join(bhoursds,Seq("business_id"))
+
+    val detailedbsnsdetails = consolreviews.join(broadcast(consolidatedbs),Seq("business_id"))
+    val hourwisecheckinlistcoll=checkds.groupBy("business_id","weekday").pivot("hour").agg(collect_list("checkins"))
+
+    def array_max(x: mutable.WrappedArray[Int]): Int = {
+      if(x.length>0)
+        x.max
+      else
+        100
+    }
+    val maxCheckins = udf(array_max _)
+
+   val hourwisemaxcheckins = hourwisecheckinlistcoll.select($"business_id",$"weekday",maxCheckins($"0:00"),maxCheckins($"1:00"),maxCheckins($"2:00"),maxCheckins($"3:00"),maxCheckins($"4:00"),maxCheckins($"5:00"),maxCheckins($"6:00"),maxCheckins($"7:00"),maxCheckins($"8:00"),maxCheckins($"9:00"),maxCheckins($"10:00"),maxCheckins($"11:00"),maxCheckins($"12:00"),maxCheckins($"13:00"),maxCheckins($"14:00"),maxCheckins($"15:00"),maxCheckins($"16:00"),maxCheckins($"17:00"),maxCheckins($"18:00"),maxCheckins($"19:00"),maxCheckins($"20:00"),maxCheckins($"21:00"),maxCheckins($"22:00"),maxCheckins($"23:00"))
+
+
+    val businessdaywisecheckins = checkds.groupBy("business_id").pivot("weekday").agg(collect_list("checkins").alias("checkins"))
+
+    val businessdaywisemaxcheckins = businessdaywisecheckins.select($"business_id",maxCheckins($"Fri").alias("FriMaxCheckins"),maxCheckins($"Mon").alias("MonMaxCheckins"),maxCheckins($"Tue").alias("TueMaxCheckins"),maxCheckins($"Wed").alias("WedMaxCheckins"),maxCheckins($"Thu").alias("ThuMaxCheckins"),maxCheckins($"Sat").alias("SatMaxCheckins"),maxCheckins($"Sun").alias("SunMaxCheckins"))
+
+    val businessdaywisetotalcheckins = checkds.groupBy("business_id").pivot("weekday").agg(sum("checkins"))
+
+
     val filterbusinessds=  businessds.select(col("stars"),col("review_count")).filter(row=>{
       val temp= row.getString(0)
       var ret = true
@@ -117,6 +145,10 @@ object YelpAnalysis
       ret
     }
     )
+
+
+
+
 
 
   }
