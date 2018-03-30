@@ -69,7 +69,7 @@ public class DataCenterSensorProducer
 		jsonNode = objectMapper.valueToTree(dsc);
 		System.out.println(jsonNode);
 		rec = new ProducerRecord<String, JsonNode>("sensor",jsonNode);
-		producer.send(rec);
+		//producer.send(rec);
 		rec = null;
 		}
 		

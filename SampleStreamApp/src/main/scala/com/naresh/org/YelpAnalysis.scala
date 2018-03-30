@@ -42,6 +42,7 @@ object YelpAnalysis
 
     */
 
+    import spark.implicits._
     val businessds = spark.read.parquet("hdfs://localhost:9000/yelp/businessds/part*").as[business]
     val businessAttrds = spark.read.parquet("hdfs://localhost:9000/yelp/businessattds/part*").as[ba]
     val bhoursds =  spark.read.parquet("hdfs://localhost:9000/yelp/bhourds/part*").as[bh]

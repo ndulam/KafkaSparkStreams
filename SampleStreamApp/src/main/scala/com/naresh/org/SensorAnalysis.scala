@@ -11,12 +11,12 @@ import org.apache.spark.sql.types._
 object SensorAnalysis
 {
 
-  case class sensor(dcname:String,devicename:String,id:Int,ip:String,description:String,temp:Long,co2level:Long,lat:Double,longi:Double,eventTime:Timestamp)
+  case class sensor(dcname:String,devicename:String,id:Int,ip:String,description:String,temp:Long,co2level:Long,lat:Double,longi:Double,eventTime:java.sql.Timestamp)
 
   object sensor
   {
     def apply(carId:String,devicename:String,id:Int,ip:String,description:String,temp:Long,co2level:Long,lat:Double,longi:Double,eventTime:Long): sensor =
-      new sensor(carId, devicename, id, ip, description, temp, co2level, lat, longi, new Timestamp(eventTime))
+      new sensor(carId, devicename, id, ip, description, temp, co2level, lat, longi, new java.sql.Timestamp(eventTime))
   }
   case class location(id:Int,zipCode:Int)
   def main(args: Array[String]): Unit =
